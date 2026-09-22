@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Eyes</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; }
+
+.screen { display: none; flex-direction: column; align-items: center; min-height: 100vh; padding: 30px 20px; }
+.screen.active { display: flex; }
+
+.btn { border: none; border-radius: 16px; cursor: pointer; font-size: 20px; font-weight: 600;
+    padding: 22px 20px; width: 100%; max-width: 480px; margin: 8px 0;
+    transition: opacity 0.15s, transform 0.1s; line-height: 1.4; }
+.btn:active { transform: scale(0.97); }
+.btn-blue  { background: #4a90e2; color: #fff; }
+.btn-dark  { background: #1a1a2e; color: #fff; border: 2px solid #4a90e2; }
+.btn-red   { background: #c0392b; color: #fff; }
+.btn-green { background: #27ae60; color: #fff; }
+.btn-sm    { padding: 14px 20px; font-size: 16px; border-radius: 12px; }
+
+#screen-welcome { justify-content: center; text-align: center; }
+.logo      { font-size: 80px; margin-bottom: 12px; }
+.app-name  { font-size: 44px; font-weight: 700; margin-bottom: 8px; }
+.app-tag   { font-size: 16px; color: #555; margin-bottom: 60px; line-height: 1.6; }
+
+#screen-menu { justify-content: center; text-align: center; }
+.menu-title { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+.menu-sub   { font-size: 15px; color: #555; margin-bottom: 40px; }
+.lang-row   { display: flex; gap: 10px; max-width: 480px; width: 100%; margin-top: 20px; }
+.lang-btn   { flex: 1; padding: 14px; font-size: 16px; border-radius: 12px; border: 2px solid #333;
+    background: #111; color: #888; cursor: pointer; transition: all 0.15s; }
+.lang-btn.active { border-color: #4a90e2; color: #fff; background: #1a1a2e; }
+
+.mode-header { background: #111; width: 100%; padding: 16px 20px; font-size: 20px; font-weight: 700;
+    border-bottom: 2px solid #4a90e2; position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: 12px; }
+.back-btn { background: none; border: none; color: #4a90e2; font-size: 24px; cursor: pointer; padding: 0; }
+
+.box { background: #111; border: 2px solid #4a90e2; border-radius: 14px; padding: 16px 20px;
+    margin: 10px 0; font-size: 17px; line-height: 1.6; width: 100%; max-width: 680px;
+    text-align: center; min-height: 56px; }
+.box.ok   { border-color: #27ae60; }
+.box.warn { border-color: #e67e22; }
+.box.err  { border-color: #c0392b; }
+
+#screen-eye { padding: 0; }
+.eye-body { padding: 16px 20px; width: 100%; max-width: 720px; display: flex; flex-direction: column; align-items: center; }
+#cam { width: 100%; max-width: 680px; border-radius: 14px; background: #111; display: block; border: 2px solid #333; }
+.tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; justify-content: center; }
+.tag { background: #1a1a2e; border: 1px solid #4a90e2; border-radius: 20px; padding: 6px 14px; font-size: 14px; }
+.tag.left   { border-color: #e67e22; }
+.tag.ahead  { border-color: #27ae60; }
+.tag.right  { border-color: #9b59b6; }
+
+#screen-nav { padding: 0; }
+.nav-body { padding: 16px 20px; width: 100%; max-width: 600px; display: flex; flex-direction: column; align-items: center; }
+.inp { background: #111; border: 2px solid #4a90e2; color: #fff; padding: 16px; font-size: 17px;
+    border-radius: 12px; width: 100%; max-width: 480px; margin: 6px 0; outline: none; }
+.inp::placeholder { color: #444; }
+.inp.from { border-color: #27ae60; }
+.inp.to   { border-color: #4a90e2; }
+
+.step-card { background: #111; border-left: 4px solid #4a90e2; border-radius: 0 12px 12px 0;
+    padding: 14px 16px; margin: 6px 0; width: 100%; font-size: 16px; line-height: 1.5; }
+.step-card.active { border-left-color: #27ae60; background: #0a1a0a; }
+.step-sub { color: #555; font-size: 13px; margin-top: 4px; }
+
+.or-divider { color: #444; font-size: 14px; margin: 8px 0; width: 100%; max-width: 480px;
+    text-align: center; border-top: 1px solid #222; padding-top: 12px; }
+
+.route-summary { background: #0d2137; border: 2px solid #4a90e2; border-radius: 12px;
+    padding: 14px 20px; margin: 10px 0; width: 100%; display: flex; gap: 24px; justify-content: center;
+    font-size: 18px; font-weight: 600; }
+.route-stat { display: flex; flex-direction: column; align-items: center; }
+.route-stat span { font-size: 13px; color: #888; font-weight: 400; margin-top: 2px; }
+
+#mic-btn { position: fixed; bottom: 20px; right: 20px; width: 64px; height: 64px;
+    border-radius: 50%; background: #4a90e2; border: none; color: #fff; font-size: 26px;
+    cursor: pointer; z-index: 100; box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
+#mic-btn.listening { background: #c0392b; animation: pulse 1s infinite; }
+@keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(192,57,43,0.6);} 100%{box-shadow:0 0 0 18px rgba(192,57,43,0);} }
+#mic-feedback { position: fixed; bottom: 92px; right: 20px; max-width: 260px; background: #111;
+    border: 2px solid #4a90e2; border-radius: 12px; padding: 10px 14px; font-size: 14px;
+    color: #fff; z-index: 100; display: none; }
+
+#nav-cam { width: 100%; max-width: 400px; border-radius: 12px; border: 2px solid #333; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<div id="screen-welcome" class="screen active">
+    <div class="logo">👁</div>
+    <div class="app-name">AI Eyes</div>
+    <div class="app-tag">
+        Real-Time Accessibility Assistant — UAE<br>
+        مساعد إمكانية الوصول — الإمارات
+    </div>
+    <button class="btn btn-blue" onclick="startOnboardingFlow()">Get Started / ابدأ الآن</button>
+</div>
+
+<div id="screen-menu" class="screen">
+    <div class="menu-title" id="menu-title">Choose a Mode</div>
+    <div class="menu-sub"  id="menu-sub">Select what you need help with</div>
+
+    <button class="btn btn-blue" onclick="cancelOnboarding(); show('screen-eye'); resetEye();" style="margin-top:30px;">
+        <span id="lbl-eye">👁 Be My Eye</span><br>
+        <span id="sub-eye" style="font-size:15px;font-weight:400;opacity:0.8;">Scan your surroundings</span>
+    </button>
+
+    <button class="btn btn-blue" onclick="cancelOnboarding(); show('screen-nav'); resetNav();" style="margin-top:4px;">
+        <span id="lbl-nav">📍 Navigate</span><br>
+        <span id="sub-nav" style="font-size:15px;font-weight:400;opacity:0.8;">Get walking directions</span>
+    </button>
+
+    <div class="lang-row">
+        <button class="lang-btn active" id="lang-en" onclick="cancelOnboarding(); setLang('en')">🇬🇧 English</button>
+        <button class="lang-btn"        id="lang-ar" onclick="cancelOnboarding(); setLang('ar')">🇦🇪 العربية</button>
+    </div>
+</div>
+
+<div id="screen-eye" class="screen">
+    <div class="mode-header">
+        <button class="back-btn" onclick="stopEye(); show('screen-menu')">←</button>
+        <span id="hdr-eye">👁 Be My Eye</span>
+    </div>
+    <div class="eye-body">
+        <video id="cam" autoplay playsinline muted></video>
+        <div class="box" id="eye-status">Press Start to activate camera</div>
+        <div class="tags" id="eye-tags"></div>
+        <button class="btn btn-blue"  id="eye-start" onclick="startScanning()">▶ Start Scanning</button>
+        <button class="btn btn-red"   id="eye-stop"  onclick="stopScanning()" style="display:none;">⏹ Stop</button>
+        <button class="btn btn-dark btn-sm" onclick="stopEye(); show('screen-menu')" style="margin-top:6px;">🔙 Back to Menu</button>
+    </div>
+</div>
+
+<div id="screen-nav" class="screen">
+    <div class="mode-header">
+        <button class="back-btn" onclick="stopNav(); show('screen-menu')">←</button>
+        <span id="hdr-nav">📍 Navigate</span>
+    </div>
+    <div class="nav-body">
+
+        <video id="nav-cam" autoplay playsinline muted style="display:none;"></video>
+        <div class="box" id="nav-obstacle" style="display:none;padding:8px 16px;font-size:14px;min-height:auto;"></div>
+
+        <div id="nav-input" style="width:100%;display:flex;flex-direction:column;align-items:center;">
+            <div class="box" id="nav-msg">Enter a start and destination, then press Get Directions</div>
+
+            <input class="inp from" id="from-inp" placeholder="📍 Start: e.g. Sahara Centre Sharjah (leave blank to use GPS)">
+            <button class="btn btn-dark btn-sm" id="gps-btn" onclick="useGPS()" style="max-width:480px;">
+                📡 Use My Current GPS Location as Start
+            </button>
+            <div id="gps-status" style="color:#27ae60;font-size:14px;margin:4px 0;min-height:20px;"></div>
+
+            <div class="or-divider">↓ Destination</div>
+            <input class="inp to" id="to-inp" placeholder="🏁 End: e.g. Nesto Mall Sharjah Al Nahda"
+                   onkeydown="if(event.key==='Enter') getDirections()">
+
+            <button class="btn btn-green" onclick="getDirections()" style="margin-top:10px;">
+                <span id="lbl-go">📍 Get Directions</span>
+            </button>
+            <button class="btn btn-dark btn-sm" onclick="stopNav(); show('screen-menu')" style="margin-top:6px;">
+                🔙 Back to Menu
+            </button>
+        </div>
+
+        <div id="nav-route" style="display:none;width:100%;">
+            <div class="route-summary" id="route-summary"></div>
+            <div class="box ok" id="nav-current">Loading first step...</div>
+            <div id="nav-steps-list"></div>
+            <button class="btn btn-red  btn-sm" onclick="stopNav()"                  style="max-width:480px;margin-top:12px;">⏹ Stop Navigation</button>
+            <button class="btn btn-dark btn-sm" onclick="stopNav(); show('screen-menu')" style="max-width:480px;margin-top:6px;">🔙 New Route</button>
+        </div>
+
+    </div>
+</div>
+
+<button id="mic-btn" onclick="toggleMic()">🎤</button>
+<div id="mic-feedback"></div>
+
+<script>
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let lang = 'en';
+let scanning = false;
+let camStream = null;
+let scanTimer = null;
+let isDetecting = false;
+let locWatcher = null;
+let routeSteps = [];
+let curStep = 0;
+let stepPrepared = [];
+let gpsLat = null, gpsLng = null;
+let destLat = null, destLng = null;
+
+// ══════════════════════════════════════════
+// TRANSLATIONS
+// ══════════════════════════════════════════
+const TX = {
+    en: {
+        menuTitle:'Choose a Mode', menuSub:'Select what you need help with',
+        lblEye:'👁 Be My Eye', subEye:'Scan your surroundings',
+        lblNav:'📍 Navigate', subNav:'Get walking directions',
+        hdrEye:'👁 Be My Eye', hdrNav:'📍 Navigate',
+        eyeReady:'Press Start to activate camera',
+        navMsg:'Enter a start and destination, then press Get Directions',
+        lblGo:'📍 Get Directions',
+        detecting:'🔍 Detecting objects...',
+        noObj:'✅ Path looks clear — no obstacles detected.',
+        gpsGetting:'📡 Getting your GPS location...',
+        gpsOk:'✅ GPS location captured.',
+        gpsFail:'❌ GPS not available. Please type a starting location instead.',
+        searching:'🔄 Searching for locations...',
+        routing:'🔄 Calculating walking route...',
+        notFound:'❌ Location not found. Try a more specific name (e.g. add city name).',
+        routeErr:'❌ Could not calculate route. Check your internet connection and try again.',
+        arrived:'✅ You have arrived at',
+        steps:'steps', min:'min walk',
+        inApprox:'In approximately', stepsTo:'steps:',
+    },
+    ar: {
+        menuTitle:'اختر وضعاً', menuSub:'حدد ما تحتاج المساعدة فيه',
+        lblEye:'👁 كن عيني', subEye:'مسح محيطك',
+        lblNav:'📍 التنقل', subNav:'احصل على اتجاهات المشي',
+        hdrEye:'👁 كن عيني', hdrNav:'📍 التنقل',
+        eyeReady:'اضغط ابدأ لتفعيل الكاميرا',
+        navMsg:'أدخل نقطة البداية والوجهة ثم اضغط احصل على الاتجاهات',
+        lblGo:'📍 احصل على الاتجاهات',
+        detecting:'🔍 جارٍ الكشف عن الأجسام...',
+        noObj:'✅ المسار واضح — لا عوائق.',
+        gpsGetting:'📡 جارٍ تحديد موقعك...',
+        gpsOk:'✅ تم تحديد الموقع.',
+        gpsFail:'❌ GPS غير متاح. يرجى كتابة موقع البداية.',
+        searching:'🔄 جارٍ البحث عن المواقع...',
+        routing:'🔄 جارٍ حساب المسار...',
+        notFound:'❌ لم يتم العثور على الموقع. جرب اسماً أكثر تحديداً.',
+        routeErr:'❌ تعذر حساب المسار. تحقق من اتصالك بالإنترنت.',
+        arrived:'✅ لقد وصلت إلى',
+        steps:'خطوة', min:'دقيقة مشي',
+        inApprox:'بعد حوالي', stepsTo:'خطوة:',
+    }
+};
+function T(k){ return TX[lang][k] || TX['en'][k] || k; }
+
+// ══════════════════════════════════════════
+// AUDIO CUES (new — fixes #8, helps with mic-timing confusion)
+// ══════════════════════════════════════════
+function playBeep(frequency, duration) {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.frequency.value = frequency;
+        gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + duration);
+    } catch(e) { /* audio context unavailable, fail silently */ }
+}
+function beepMicStart() { playBeep(880, 0.1); }
+function beepMicStop()  { playBeep(440, 0.1); }
+
+// ══════════════════════════════════════════
+// SCREEN
+// ══════════════════════════════════════════
+function show(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+// ══════════════════════════════════════════
+// LANGUAGE
+// ══════════════════════════════════════════
+function setLang(l){
+    lang = l;
+    document.getElementById('lang-en').classList.toggle('active', l==='en');
+    document.getElementById('lang-ar').classList.toggle('active', l==='ar');
+    document.body.dir = l==='ar' ? 'rtl' : 'ltr';
+    document.getElementById('menu-title').textContent = T('menuTitle');
+    document.getElementById('menu-sub').textContent   = T('menuSub');
+    document.getElementById('lbl-eye').textContent    = T('lblEye');
+    document.getElementById('sub-eye').textContent    = T('subEye');
+    document.getElementById('lbl-nav').textContent    = T('lblNav');
+    document.getElementById('sub-nav').textContent    = T('subNav');
+    document.getElementById('hdr-eye').textContent    = T('hdrEye');
+    document.getElementById('hdr-nav').textContent    = T('hdrNav');
+    document.getElementById('lbl-go').textContent     = T('lblGo');
+}
+
+// ══════════════════════════════════════════
+// BE MY EYE
+// ══════════════════════════════════════════
+function resetEye(){
+    document.getElementById('eye-status').textContent = T('eyeReady');
+    document.getElementById('eye-status').className = 'box';
+    document.getElementById('eye-tags').innerHTML = '';
+    document.getElementById('eye-start').style.display = 'block';
+    document.getElementById('eye-stop').style.display  = 'none';
+}
+
+async function startScanning(){
+    const status = document.getElementById('eye-status');
+    const video  = document.getElementById('cam');
+    status.textContent = '📷 Requesting camera...';
+    status.className = 'box';
+    try {
+        camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = camStream;
+        await new Promise(r => { video.onloadedmetadata = () => { video.play(); r(); }; });
+    } catch(e){
+        status.textContent = '❌ Camera denied: ' + e.message;
+        status.className = 'box err';
+        return;
+    }
+    scanning = true;
+    document.getElementById('eye-start').style.display = 'none';
+    document.getElementById('eye-stop').style.display  = 'block';
+    status.textContent = T('detecting');
+    runDetection();
+    scanTimer = setInterval(runDetection, 3500);
+}
+
+let mirrorFix = true;
+let eyeLastNarration = '';
+let eyeLastSpeakTime = 0;
+
+async function checkDistance(){
+    const video = document.getElementById('cam');
+    if(!video.videoWidth){
+        speak(lang === 'ar' ? 'الكاميرا غير نشطة' : 'Camera is not active', true);
+        return;
+    }
+    speak(lang === 'ar' ? 'جارٍ التحقق...' : 'Checking...', true);
+
+    const c = document.createElement('canvas');
+    c.width = video.videoWidth; c.height = video.videoHeight;
+    const ctx = c.getContext('2d');
+    if(mirrorFix){ ctx.translate(c.width, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(video, 0, 0);
+    const img = c.toDataURL('image/jpeg', 0.8).split(',')[1];
+
+    try {
+        const res = await fetch('/distance-check', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ image: img, lang: lang })
+        });
+        const data = await res.json();
+        if(data.status === 'ok'){
+            speak(data.narration, true);
+        } else {
+            speak(lang === 'ar' ? 'حدث خطأ' : "Sorry, couldn't check that", true);
+        }
+    } catch(e){
+        speak(lang === 'ar' ? 'خطأ في الاتصال' : 'Connection error', true);
+    }
+}
+
+async function askSpatial(queryType){
+    try {
+        const res = await fetch('/spatial-query', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ query_type: queryType, lang: lang })
+        });
+        const data = await res.json();
+        if(data.status === 'ok'){
+            speak(data.narration, true);
+        }
+    } catch(e){
+        speak(lang === 'ar' ? 'خطأ في الاتصال' : 'Connection error', true);
+    }
+}
+
+async function runDetection(){
+    if(!scanning) return;
+    if(isDetecting) return;
+    const video  = document.getElementById('cam');
+    const status = document.getElementById('eye-status');
+    const tags   = document.getElementById('eye-tags');
+    if(!video.videoWidth) return;
+
+    const c = document.createElement('canvas');
+    c.width  = video.videoWidth;
+    c.height = video.videoHeight;
+    const ctx = c.getContext('2d');
+    if(mirrorFix){ ctx.translate(c.width, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(video, 0, 0);
+    const img = c.toDataURL('image/jpeg', 0.8).split(',')[1];
+
+    isDetecting = true;
+    try {
+        const res  = await fetch('/detect', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ image: img, lang: lang })
+        });
+        const data = await res.json();
+        if(data.status === 'ok'){
+            status.textContent = '🔊 ' + data.narration;
+            status.className = data.detections.length > 0 ? 'box warn' : 'box ok';
+
+            const eNow = Date.now();
+            if(data.detections.length && data.narration !== eyeLastNarration){
+                speak(data.narration, true);
+                eyeLastNarration = data.narration;
+                eyeLastSpeakTime = eNow;
+            } else if(data.detections.length && eNow - eyeLastSpeakTime > 4000){
+                speak(data.narration, true);
+                eyeLastSpeakTime = eNow;
+            }
+
+            tags.innerHTML = '';
+            if(data.detections.length === 0){
+                const t = document.createElement('span');
+                t.className = 'tag ahead';
+                t.textContent = T('noObj');
+                tags.appendChild(t);
+            } else {
+                data.detections.forEach(d => {
+                    const t = document.createElement('span');
+                    t.className = 'tag ' + d.position;
+                    const arrow = {left:'← ',ahead:'↑ ',right:'→ '}[d.position]||'';
+                    t.textContent = arrow + d.label + ' · ' + d.proximity;
+                    tags.appendChild(t);
+                });
+            }
+        } else {
+            status.textContent = '⚠️ ' + (data.error || 'Detection issue — retrying');
+            status.className = 'box warn';
+        }
+    } catch(e){
+        status.textContent = '⚠️ Connection error — retrying...';
+        status.className = 'box warn';
+    } finally {
+        isDetecting = false;
+    }
+}
+
+function stopScanning(){
+    scanning = false;
+    if(scanTimer){ clearInterval(scanTimer); scanTimer = null; }
+    if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream = null; }
+    const v = document.getElementById('cam'); if(v) v.srcObject = null;
+    document.getElementById('eye-start').style.display = 'block';
+    document.getElementById('eye-stop').style.display  = 'none';
+    document.getElementById('eye-status').textContent  = T('eyeReady');
+    document.getElementById('eye-status').className    = 'box';
+    document.getElementById('eye-tags').innerHTML      = '';
+}
+function stopEye(){ stopScanning(); }
+
+// ══════════════════════════════════════════
+// NAVIGATE — GPS
+// ══════════════════════════════════════════
+function useGPS(){
+    const msg = document.getElementById('nav-msg');
+    const st  = document.getElementById('gps-status');
+    msg.textContent = T('gpsGetting');
+    msg.className = 'box';
+    st.textContent = '📡 Requesting GPS...';
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            gpsLat = pos.coords.latitude;
+            gpsLng = pos.coords.longitude;
+            document.getElementById('from-inp').value = '';
+            document.getElementById('from-inp').placeholder = `📡 GPS: ${gpsLat.toFixed(5)}, ${gpsLng.toFixed(5)}`;
+            st.textContent = T('gpsOk');
+            msg.textContent = T('navMsg');
+        },
+        err => {
+            st.textContent = T('gpsFail');
+            gpsLat = null; gpsLng = null;
+        },
+        { timeout: 10000, enableHighAccuracy: true }
+    );
+}
+
+// ══════════════════════════════════════════
+// NAVIGATE — GET DIRECTIONS
+// ══════════════════════════════════════════
+async function geocodePlace(place){
+    const res  = await fetch('/geocode', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ place: place })
+    });
+    return await res.json();
+}
+
+async function getDirections(){
+    cancelNavVoiceSetup();
+    const fromText = document.getElementById('from-inp').value.trim();
+    const toText   = document.getElementById('to-inp').value.trim();
+    const msg      = document.getElementById('nav-msg');
+
+    if(!toText){
+        msg.textContent = '⚠️ Please enter a destination.';
+        msg.className = 'box warn';
+        return;
+    }
+
+    msg.textContent = T('searching');
+    msg.className = 'box';
+
+    let startLat, startLng, startName;
+
+    if(fromText){
+        const geo = await geocodePlace(fromText);
+        if(geo.status !== 'ok'){
+            msg.textContent = T('notFound') + ' (' + fromText + ')';
+            msg.className = 'box err';
+            document.getElementById('from-inp').value = '';
+            navVoiceStep = 'from';
+            speak(lang === 'ar'
+                ? `لم أجد "${fromText}"، من فضلك قل موقع البداية مرة أخرى`
+                : `I couldn't find "${fromText}", please say your starting location again`, true);
+            return;
+        }
+        startLat  = geo.lat;
+        startLng  = geo.lng;
+        startName = geo.name;
+    } else if(gpsLat !== null){
+        startLat  = gpsLat;
+        startLng  = gpsLng;
+        startName = 'Your Location';
+    } else {
+        msg.textContent = '⚠️ Please either type a starting location or press the GPS button first.';
+        msg.className = 'box warn';
+        return;
+    }
+
+    const geoTo = await geocodePlace(toText);
+    if(geoTo.status !== 'ok'){
+        msg.textContent = T('notFound') + ' (' + toText + ')';
+        msg.className = 'box err';
+        document.getElementById('to-inp').value = '';
+        navVoiceStep = 'to';
+        speak(lang === 'ar'
+            ? `لم أجد "${toText}"، من فضلك قل الوجهة مرة أخرى`
+            : `I couldn't find "${toText}", please say your destination again`, true);
+        return;
+    }
+    destLat = geoTo.lat;
+    destLng = geoTo.lng;
+    const destName = geoTo.name;
+
+    msg.textContent = T('routing');
+    try {
+        const res  = await fetch('/navigate', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+                user_lat: startLat, user_lng: startLng,
+                dest_lat: destLat,  dest_lng: destLng,
+                dest_name: destName
+            })
+        });
+        const data = await res.json();
+
+        if(data.status !== 'ok'){
+            msg.textContent = '❌ ' + (data.message || T('routeErr'));
+            msg.className = 'box err';
+            return;
+        }
+
+        routeSteps = data.steps;
+        curStep = 0;
+
+        document.getElementById('nav-input').style.display  = 'none';
+        document.getElementById('nav-route').style.display  = 'block';
+
+        document.getElementById('route-summary').innerHTML =
+            `<div class="route-stat">${data.total_steps}<span>${T('steps')}</span></div>
+             <div class="route-stat">${data.total_distance}m<span>distance</span></div>
+             <div class="route-stat">${data.total_minutes}<span>${T('min')}</span></div>`;
+
+        stepPrepared = routeSteps.map(() => false);
+        renderSteps();
+
+        const summaryMsg = lang === 'ar'
+            ? `المسافة ${data.total_distance} متر، حوالي ${data.total_steps} خطوة، ${data.total_minutes} دقيقة تقريبًا`
+            : `${data.total_distance} meters away, about ${data.total_steps} steps, roughly ${data.total_minutes} minutes`;
+        speak(summaryMsg, true);
+
+        showCurrentStep();
+        startNavCamera();
+        startLiveGPS();
+
+    } catch(e){
+        msg.textContent = T('routeErr');
+        msg.className = 'box err';
+        console.error('Nav error:', e);
+    }
+}
+
+function renderSteps(){
+    const list = document.getElementById('nav-steps-list');
+    list.innerHTML = '';
+    routeSteps.forEach((s, i) => {
+        const card = document.createElement('div');
+        card.className = 'step-card' + (i === curStep ? ' active' : '');
+        card.id = 'step-' + i;
+        const sub = `≈ ${s.steps_count} ${T('steps')} · ${s.distance_m}m`;
+        card.innerHTML = `<div>${s.instruction}</div><div class="step-sub">${sub}</div>`;
+        list.appendChild(card);
+    });
+    const el = document.getElementById('step-' + curStep);
+    if(el) el.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+function showCurrentStep(speakIt){
+    if(curStep >= routeSteps.length) return;
+    const s = routeSteps[curStep];
+    const msg = `${T('inApprox')} ${s.steps_count} ${T('stepsTo')} ${s.instruction}`;
+    document.getElementById('nav-current').textContent = '📍 ' + msg;
+    if(speakIt) speak(msg, true);
+}
+
+function startLiveGPS(){
+    if(locWatcher) navigator.geolocation.clearWatch(locWatcher);
+    locWatcher = navigator.geolocation.watchPosition(
+        pos => {
+            gpsLat = pos.coords.latitude;
+            gpsLng = pos.coords.longitude;
+            checkProgress();
+        },
+        err => console.log('GPS error:', err),
+        { enableHighAccuracy:true, timeout:10000, maximumAge:3000 }
+    );
+}
+
+function checkProgress(){
+    if(curStep >= routeSteps.length) return;
+    const step = routeSteps[curStep];
+
+    if(step.lat != null && step.lng != null){
+        const dToTurn = haversine(gpsLat, gpsLng, step.lat, step.lng);
+
+        if(dToTurn <= 15 && !stepPrepared[curStep]){
+            stepPrepared[curStep] = true;
+            speak(`${T('inApprox')} ${step.steps_count} ${T('stepsTo')} ${step.instruction}`, true);
+        }
+        if(dToTurn <= 4){
+            speak(step.instruction + ' now', true);
+            document.getElementById('step-' + curStep)?.classList.remove('active');
+            curStep++;
+            renderSteps();
+            if(curStep < routeSteps.length) showCurrentStep(false);
+        }
+    }
+
+    if(destLat){
+        const dToDest = haversine(gpsLat, gpsLng, destLat, destLng);
+        if(dToDest < 20){
+            if(locWatcher){ navigator.geolocation.clearWatch(locWatcher); locWatcher = null; }
+            const msg = T('arrived') + ' destination';
+            document.getElementById('nav-current').textContent = '✅ ' + msg;
+            document.getElementById('nav-current').className = 'box ok';
+            speak(msg, true);
+            stopNavCamera();
+            speak(lang === 'ar'
+                ? 'قل التنقل للذهاب إلى مكان آخر، أو كن عيني، أو توقف'
+                : 'Say navigate to go somewhere else, be my eye, or stop', true);
+        }
+    }
+}
+
+function stopNav(){
+    cancelNavVoiceSetup();
+    stopNavCamera();
+    if(locWatcher){ navigator.geolocation.clearWatch(locWatcher); locWatcher = null; }
+    routeSteps = []; curStep = 0;
+    gpsLat = null; gpsLng = null;
+    document.getElementById('nav-input').style.display  = 'flex';
+    document.getElementById('nav-route').style.display  = 'none';
+    document.getElementById('from-inp').value = '';
+    document.getElementById('from-inp').placeholder = '📍 Start: e.g. Sahara Centre Sharjah (leave blank to use GPS)';
+    document.getElementById('to-inp').value   = '';
+    document.getElementById('gps-status').textContent = '';
+    document.getElementById('nav-steps-list').innerHTML = '';
+    document.getElementById('nav-current').textContent = '';
+    document.getElementById('nav-msg').textContent = T('navMsg');
+    document.getElementById('nav-msg').className = 'box';
+    document.getElementById('route-summary').innerHTML = '';
+}
+
+function resetNav(){ stopNav(); }
+
+// ══════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════
+function haversine(lat1,lng1,lat2,lng2){
+    const R=6371000, p1=lat1*Math.PI/180, p2=lat2*Math.PI/180;
+    const dp=(lat2-lat1)*Math.PI/180, dl=(lng2-lng1)*Math.PI/180;
+    const a=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+    return 2*R*Math.asin(Math.sqrt(a));
+}
+
+// ══════════════════════════════════════════
+// NAVIGATE — LIVE OBSTACLE DETECTION
+// ══════════════════════════════════════════
+let navCamStream = null;
+let navDetectTimer = null;
+let navIsDetecting = false;
+let lastDangerKey = '';
+let lastDangerTime = 0;
+let lastAmbientText = '';
+let lastAmbientTime = 0;
+
+async function startNavCamera(){
+    const video = document.getElementById('nav-cam');
+    const box   = document.getElementById('nav-obstacle');
+    video.style.display = 'block';
+    box.style.display = 'block';
+    try {
+        navCamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = navCamStream;
+        await new Promise(r => { video.onloadedmetadata = () => { video.play(); r(); }; });
+    } catch(e){
+        box.textContent = '⚠️ Camera unavailable — navigating without obstacle detection';
+        box.className = 'box warn';
+        return;
+    }
+    navDetectTimer = setInterval(navRunDetection, 3500);
+}
+
+async function navRunDetection(){
+    if(navIsDetecting) return;
+    const video = document.getElementById('nav-cam');
+    const box   = document.getElementById('nav-obstacle');
+    if(!video || !video.videoWidth) return;
+
+    const c = document.createElement('canvas');
+    c.width = video.videoWidth; c.height = video.videoHeight;
+    const ctx = c.getContext('2d');
+    if(mirrorFix){ ctx.translate(c.width, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(video, 0, 0);
+    const img = c.toDataURL('image/jpeg', 0.7).split(',')[1];
+
+    navIsDetecting = true;
+    try {
+        const res = await fetch('/detect', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ image: img, lang: lang })
+        });
+        const data = await res.json();
+        if(data.status === 'ok'){
+            const danger = data.detections.filter(d => d.proximity === 'very close');
+            const dangerKey = danger.map(d => d.position + ':' + d.label).sort().join(',');
+            const now = Date.now();
+
+            if(danger.length){
+                box.textContent = '⚠️ ' + data.narration;
+                box.className = 'box err';
+                if((dangerKey !== lastDangerKey || now - lastDangerTime > 8000)){
+                    const posWord = { left: lang==='ar'?'يسارك':'your left', ahead: lang==='ar'?'أمامك':'ahead', right: lang==='ar'?'يمينك':'your right' };
+                    const items = danger.map(d => d.label + ' ' + (lang==='ar'?'على ':'at ') + posWord[d.position]).join(', ');
+                    speak((lang === 'ar' ? 'انتبه، ' : 'Careful, ') + items, true);
+                    lastDangerTime = now;
+                }
+                lastDangerKey = dangerKey;
+            } else {
+                box.textContent = data.detections.length ? '👁 ' + data.narration : '';
+                box.className = 'box';
+                lastDangerKey = '';
+                if(data.detections.length && data.narration !== lastAmbientText && now - lastAmbientTime > 8000){
+                    speak(data.narration);
+                    lastAmbientText = data.narration;
+                    lastAmbientTime = now;
+                }
+            }
+        }
+    } catch(e){ }
+    finally { navIsDetecting = false; }
+}
+
+function stopNavCamera(){
+    if(navDetectTimer){ clearInterval(navDetectTimer); navDetectTimer = null; }
+    if(navCamStream){ navCamStream.getTracks().forEach(t=>t.stop()); navCamStream = null; }
+    const v = document.getElementById('nav-cam'); if(v){ v.srcObject = null; v.style.display = 'none'; }
+    const box = document.getElementById('nav-obstacle');
+    if(box){ box.textContent = ''; box.style.display = 'none'; }
+}
+
+// ══════════════════════════════════════════
+// VOICE CONTROL / SPEECH QUEUE
+// ══════════════════════════════════════════
+let currentScreen = 'screen-welcome';
+let lastSpoken = '';
+const _origShow = show;
+show = function(id){
+    _origShow(id);
+    currentScreen = id;
+    if(id === 'screen-nav'){ setTimeout(beginNavVoiceSetup, 400); }
+};
+
+let speechQueue = [];
+let isSpeaking = false;
+
+function speak(text, priority, onDone){
+    lastSpoken = text;
+    if(priority){ speechQueue = []; window.speechSynthesis.cancel(); isSpeaking = false; }
+    speechQueue.push({ text, onDone });
+    processSpeechQueue();
+}
+
+function processSpeechQueue(){
+    if(isSpeaking || speechQueue.length === 0) return;
+    isSpeaking = true;
+    if(ambientRec){ try{ ambientRec.stop(); }catch(e){} }
+    const item = speechQueue.shift();
+    const u = new SpeechSynthesisUtterance(item.text);
+    u.lang = lang === 'ar' ? 'ar-SA' : 'en-US';
+    u.onend = () => {
+        isSpeaking = false;
+        if(item.onDone) item.onDone();
+        processSpeechQueue();
+        if(ambientListening && !ambientRec){ setTimeout(spawnAmbientRec, 200); }
+    };
+    u.onerror = () => {
+        isSpeaking = false;
+        if(item.onDone) item.onDone();
+        processSpeechQueue();
+        if(ambientListening && !ambientRec){ setTimeout(spawnAmbientRec, 200); }
+    };
+    window.speechSynthesis.speak(u);
+}
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function toggleMic(){
+    if(ambientListening) stopAmbientListening();
+    else startAmbientListening();
+}
+
+function handleVoiceCommand(t){
+    if(t.includes('english') || t.includes('انجليزي') || t.includes('إنجليزي')){
+        setLang('en'); speak('English selected'); return;
+    }
+    if(t.includes('arabic') || t.includes('عربي')){
+        setLang('ar'); speak('تم اختيار العربية'); return;
+    }
+    if(t.includes('repeat') || t.includes('كرر')){
+        if(lastSpoken) speak(lastSpoken); return;
+    }
+    if(t.includes('flip')){
+        mirrorFix = !mirrorFix;
+        speak(mirrorFix ? 'Mirror fix on' : 'Mirror fix off'); return;
+    }
+    if(t.includes('menu') || t.includes('go back') || t.includes('القائمة')){
+        stopScanning(); stopNav(); show('screen-menu'); speak(T('menuTitle')); return;
+    }
+    if(t.includes('be my eye') || t.includes('كن عيني') || t.includes('عيني')){
+        show('screen-eye'); resetEye(); speak(T('hdrEye')); return;
+    }
+    if((t.includes('navigate') || t.includes('التنقل')) && currentScreen !== 'screen-nav'){
+        show('screen-nav'); resetNav(); speak(T('hdrNav')); return;
+    }
+    if(t.includes('stop')){
+        if(currentScreen === 'screen-eye') stopScanning();
+        if(currentScreen === 'screen-nav') stopNav();
+        speak(lang === 'ar' ? 'تم الإيقاف' : 'Stopped'); return;
+    }
+
+    // ── consolidated screen-eye block (was duplicated, now single) ──
+    if(currentScreen === 'screen-eye'){
+        if(t.includes('start') || t.includes('ابدأ')){ startScanning(); return; }
+
+        if(t.includes('how far') || t.includes('is it far') || t.includes('distance') ||
+           t.includes('كم يبعد') || t.includes('كم المسافة')){
+            checkDistance();
+            return;
+        }
+
+        if((t.includes('left') || t.includes('يسار')) && !t.includes('right')){
+            askSpatial('left'); return;
+        }
+        if((t.includes('right') || t.includes('يمين')) && !t.includes('left')){
+            askSpatial('right'); return;
+        }
+        if(t.includes('ahead') || t.includes('front') || t.includes('أمام')){
+            askSpatial('ahead'); return;
+        }
+        if(t.includes('clear') || t.includes('path') || t.includes('واضح')){
+            askSpatial('clear'); return;
+        }
+    }
+
+    if(currentScreen === 'screen-nav'){
+        if(t.includes('use my location') || t.includes('gps') || t.includes('موقعي')){
+            useGPS(); return;
+        }
+        const routeActive = document.getElementById('nav-route').style.display === 'block';
+
+        if(routeActive){
+            if(t.includes('how far') || t.includes('how much time') || t.includes('how many steps') ||
+               t.includes('distance') || t.includes('remaining') || t.includes('left') ||
+               t.includes('كم') || t.includes('متبقي')){
+                speakRemaining(); return;
+            }
+            speak(lang === 'ar' ? 'لم أفهم، جرب مرة أخرى' : "Sorry, I didn't catch that", true);
+            return;
+        }
+
+        document.getElementById('to-inp').value = t;
+        speak((lang === 'ar' ? 'الوجهة: ' : 'Destination set: ') + t, true);
+        getDirections();
+        return;
+    }
+
+    speak(lang === 'ar' ? 'لم أفهم ذلك' : "Sorry, I didn't catch that");
+}
+
+function speakRemaining(){
+    if(curStep >= routeSteps.length){
+        speak(lang === 'ar' ? 'لقد وصلت تقريبًا' : "You've basically arrived", true);
+        return;
+    }
+    let remSteps = 0, remDist = 0;
+    for(let i = curStep; i < routeSteps.length; i++){
+        remSteps += routeSteps[i].steps_count;
+        remDist  += routeSteps[i].distance_m;
+    }
+    const remMin = Math.max(1, Math.round(remDist / 75));
+    const msg = lang === 'ar'
+        ? `متبقي حوالي ${remSteps} خطوة، ${remDist} متر، حوالي ${remMin} دقيقة`
+        : `About ${remSteps} steps left, ${remDist} meters, roughly ${remMin} minutes`;
+    speak(msg, true);
+}
+
+// ══════════════════════════════════════════
+// NAVIGATE — GUIDED VOICE SETUP
+// ══════════════════════════════════════════
+let navVoiceStep = null;
+let navSilenceTimer = null;
+
+function cancelNavVoiceSetup(){
+    navVoiceStep = null;
+    clearTimeout(navSilenceTimer);
+}
+
+function beginNavVoiceSetup(){
+    if(!SR || !voiceAssistEnabled) return;
+    if(document.getElementById('nav-route').style.display === 'block') return;
+    navVoiceStep = 'from';
+    speak(lang === 'ar'
+        ? 'قل موقع البداية، أو قل استخدم موقعي، أو انتظر خمس عشرة ثانية لاستخدام موقعك الحالي'
+        : 'Say your starting location, or say use GPS, or stay quiet for fifteen seconds to use your current location.',
+        true, () => {
+            clearTimeout(navSilenceTimer);
+            navSilenceTimer = setTimeout(() => {
+                if(navVoiceStep === 'from') handleNavVoiceStep('');
+            }, 15000);
+        });
+}
+
+function handleNavVoiceStep(t){
+    if(navVoiceStep === null) return;
+    clearTimeout(navSilenceTimer);
+
+    if(navVoiceStep === 'from'){
+        const typed = document.getElementById('from-inp').value.trim();
+        const useGpsSaid = t.includes('gps') || t.includes('my location') || t.includes('موقعي');
+        const finalFrom = typed || (useGpsSaid ? '' : t);
+
+        if(!useGpsSaid && finalFrom){
+            document.getElementById('from-inp').value = finalFrom;
+            speak((lang === 'ar' ? 'نقطة البداية: ' : 'Starting point: ') + finalFrom, true);
+        } else {
+            useGPS();
+            speak(lang === 'ar' ? 'سأستخدم موقعك الحالي' : "I'll use your current location", true);
+        }
+        navVoiceStep = 'to';
+        speak(lang === 'ar' ? 'الآن قل وجهتك' : 'Now say your destination', true);
+
+    } else if(navVoiceStep === 'to'){
+        const typed = document.getElementById('to-inp').value.trim();
+        const finalTo = typed || t;
+        if(finalTo){
+            document.getElementById('to-inp').value = finalTo;
+            navVoiceStep = null;
+            getDirections();
+        } else {
+            speak(lang === 'ar' ? 'لم أسمع وجهة، حاول مرة أخرى' : "I didn't catch a destination, try again", true);
+        }
+    }
+}
+</script>
+
+<script>
+// ══════════════════════════════════════════
+// ONBOARDING
+// ══════════════════════════════════════════
+let voiceAssistEnabled = true;
+let onboardStep = null;
+let langStepTriedAr = false;
+
+function cancelOnboarding(){
+    onboardStep = null;
+}
+
+async function requestAllPermissions(){
+    try{
+        const s = await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
+        s.getTracks().forEach(t=>t.stop());
+    }catch(e){ }
+    if(navigator.geolocation){ navigator.geolocation.getCurrentPosition(()=>{}, ()=>{}, { timeout: 8000 }); }
+}
+
+async function startOnboardingFlow(){
+    show('screen-menu');
+    await requestAllPermissions();
+    startAmbientListening();
+    onboardStep = 'assist';
+    speak('Do you need voice assistance? Say yes or no.', true);
+}
+
+function handleOnboardStep(t){
+    if(onboardStep === null) return;
+
+    if(onboardStep === 'assist'){
+        if(t.includes('no') && !t.includes('know')){
+            voiceAssistEnabled = false;
+            onboardStep = null;
+            return;
+        }
+        if(t.includes('yes')){
+            onboardStep = 'lang';
+            langStepTriedAr = false;
+            speak('Which language? Say Arabic or English.', true);
+            return;
+        }
+        speak('Sorry, please say yes or no.', true);
+
+    } else if(onboardStep === 'lang'){
+        if(t.includes('arab') || t.includes('عرب') || t.includes('arabic') || t.includes('اربي')){
+            setLang('ar');
+            langStepTriedAr = false;
+        } else if(t.includes('english') || t.includes('انجلي') || t.includes('إنجلي')){
+            setLang('en');
+            langStepTriedAr = false;
+        } else {
+            langStepTriedAr = true;
+            speak(langStepTriedAr ? 'قل عربي أو إنجليزي' : 'Say Arabic or English', true);
+            return;
+        }
+        onboardStep = 'mode';
+        speak(T('menuTitle') + '. ' + (lang === 'ar'
+            ? 'قل كن عيني أو التنقل'
+            : 'Say Be my eye, or Navigate.'), true);
+
+    } else if(onboardStep === 'mode'){
+        if(t.includes('eye') || t.includes('عين')){
+            onboardStep = null;
+            show('screen-eye'); resetEye(); speak(T('hdrEye'), true);
+        } else if(t.includes('navigate') || t.includes('تنقل')){
+            onboardStep = null;
+            show('screen-nav'); resetNav(); speak(T('hdrNav'), true);
+        } else {
+            speak(lang === 'ar' ? 'قل كن عيني أو التنقل' : 'Say Be my eye, or Navigate', true);
+        }
+    }
+}
+
+// ══════════════════════════════════════════
+// ALWAYS-ON MICROPHONE
+// ══════════════════════════════════════════
+let ambientListening = false;
+let ambientRec = null;
+
+function startAmbientListening(){
+    if(!SR) return;
+    ambientListening = true;
+    spawnAmbientRec();
+}
+
+function spawnAmbientRec(){
+    if(!ambientListening || isSpeaking) return;
+    const rec = new SR();
+    ambientRec = rec;
+    rec.lang = (onboardStep === 'lang' && langStepTriedAr) ? 'ar-SA' : (lang === 'ar' ? 'ar-SA' : 'en-US');
+    rec.continuous = true;
+    rec.interimResults = false;
+
+    rec.onstart = () => {
+        beepMicStart();
+    };
+
+    rec.onresult = (e) => {
+        if(isSpeaking) return;
+        const idx = e.results.length - 1;
+        const transcript = e.results[idx][0].transcript.toLowerCase().trim();
+        const fb = document.getElementById('mic-feedback');
+        fb.style.display = 'block';
+        fb.textContent = '✅ ' + transcript;
+        setTimeout(() => { fb.style.display = 'none'; }, 2000);
+
+        if(onboardStep !== null) handleOnboardStep(transcript);
+        else if(navVoiceStep !== null) handleNavVoiceStep(transcript);
+        else handleVoiceCommand(transcript);
+    };
+    rec.onerror = () => {};
+    rec.onend = () => { ambientRec = null; if(ambientListening && !isSpeaking) spawnAmbientRec(); };
+
+    try{ rec.start(); }catch(e){}
+    const btn = document.getElementById('mic-btn');
+    if(btn){ btn.classList.add('listening'); btn.textContent = '⏸'; }
+}
+
+function stopAmbientListening(){
+    ambientListening = false;
+    if(ambientRec){ try{ ambientRec.stop(); }catch(e){} }
+    beepMicStop();
+    const btn = document.getElementById('mic-btn');
+    if(btn){ btn.classList.remove('listening'); btn.textContent = '🎤'; }
+}
+</script>
+</body>
+</html>
